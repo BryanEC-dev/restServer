@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { dbConnection } = require('../database/config');
 
 class Server {
 
@@ -13,6 +14,9 @@ class Server {
 
         // Rutas de mi aplicación
         this.routes();
+
+        // conectar db
+        this.conectarDb()
     }
 
     middlewares() {
@@ -26,6 +30,10 @@ class Server {
         // Directorio Público
         this.app.use( express.static('public') );
 
+    }
+
+    async conectarDb() {
+        await dbConnection();
     }
 
     routes() {

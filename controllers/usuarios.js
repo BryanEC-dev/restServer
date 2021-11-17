@@ -1,37 +1,78 @@
 const { response, request } = require('express');
+const User = require('../models/usuario.js')
+const bcrypt = require('bcryptjs');
+const {validationResult} = require('express-validator')
 
 
-const usuariosGet = (req = request, res = response) => {
 
-    const { q, nombre = 'No name', apikey, page = 1, limit } = req.query;
+const mongoose = require('mongoose')
+const RedirectionAuth = require('./prueba')
+const { default: axios } = require("axios");
 
+const usuariosGet = async (req = request, res = response) => {
+
+    const { limit, from } = req.query;
+
+    /* const users = await User.find()
+        .skip(Number(from))
+        .limit(Number(limit))
+    
+    const totalUsers = await User.countDocuments() */
+
+    /* Para que las dos peticiones se hagan al mismo tiempo */
+    const [users, totalUsers] = await Promise.all([
+            User.find({"status": true})
+                .skip(Number(from))
+                .limit(Number(limit)),
+            User.countDocuments({"status": true})
+    ])
+   
     res.json({
-        msg: 'get API - controlador',
-        q,
-        nombre,
-        apikey,
-        page, 
-        limit
+        limit,
+        from,
+        total : totalUsers,
+        users: users,
     });
 }
 
-const usuariosPost = (req, res = response) => {
+const usuariosPost = async (req, res) => {
 
-    const { nombre, edad } = req.body;
 
-    res.json({
-        msg: 'post API - usuariosPost',
-        nombre, 
-        edad
-    });
-}
+    try {
 
-const usuariosPut = (req, res = response) => {
+        const {name, email, password,img, rol} = req.body;    
+        const user = new User({name, email, password,img, rol})
+
+         //encriptar la contraseña
+        let salt = bcrypt.genSaltSync(10);
+        user.password = bcrypt.hashSync(password, salt);
+
+        await user.save();
+
+        res.status(201).json({
+            msg: user
+        });
+    }catch(error){
+        console.log(error)
+    }
+       
+
+
+    }
+
+const usuariosPut = async (req, res = response) => {
 
     const { id } = req.params;
+    const {email, rol, password, ...moreInfo} = req.body
+
+    //encriptar la contraseña
+    let salt = bcrypt.genSaltSync(10);
+    moreInfo.password = bcrypt.hashSync(password, salt);
+
+    const usuario = await User.findByIdAndUpdate(id,moreInfo)
 
     res.json({
-        msg: 'put API - usuariosPut',
+        msg: usuario,
         id
     });
 }
@@ -42,13 +83,17 @@ const usuariosPatch = (req, res = response) => {
     });
 }
 
-const usuariosDelete = (req, res = response) => {
+const usuariosDelete = async (req, res = response) => {
+
+    const { id } = req.params;
+    const usuario = await User.findByIdAndUpdate(id,{"status": false})
+
     res.json({
-        msg: 'delete API - usuariosDelete'
+        msg: usuario,
+        id
     });
+   
 }
-
-
 
 
 module.exports = {
